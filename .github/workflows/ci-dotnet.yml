@@ -3,7 +3,7 @@ name: CI (.NET)
 on:
   pull_request:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
 permissions:
   contents: read
@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup .NET
-      - uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
 
@@ -27,4 +27,3 @@ jobs:
 
       - name: Test
         run: dotnet test --no-build --configuration Release
-
