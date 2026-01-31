@@ -1,0 +1,20 @@
+# Required fields:
+# Objective/outcome: Define the desired result or purpose of this request
+objective: ""
+
+# Scope (in/out): Specify what is included and excluded from this request
+scope_in: []
+
+scope_out: []
+
+# Acceptance criteria (testable): Clear, measurable conditions for success
+acceptance_criteria: ""
+
+# Risk level: low|medium|high
+risk_level: "low"
+
+# Affected paths/modules: List of components or modules impacted by this change
+affected_paths: []
+
+# Safe-to-automate checkbox: Indicate if this can be automated without human intervention
+safe_to_automate: false
