@@ -30,8 +30,6 @@ namespace Program
             var jsonService = new JsonService.Service();
             var result = jsonService.TransformJson(inputJson);
             Console.WriteLine(result);
-
-            string key = "ghp_1234567890abcdefghijklmnopqrstuvwxyz";
         }
     }
 }
