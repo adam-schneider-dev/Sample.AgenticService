@@ -1,20 +1,75 @@
-# Required fields:
-# Objective/outcome: Define the desired result or purpose of this request
-objective: ""
+name: Lightspeed Request
+description: Structured request for autonomous delivery intake
+title: "[Lightspeed] <short summary>"
+labels:
+  - lightspeed:intake
+body:
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective / Outcome
+      description: Define the desired result or purpose of this request.
+      placeholder: "Example: Add an endpoint to retrieve customer summaries by ID."
+    validations:
+      required: true
 
-# Scope (in/out): Specify what is included and excluded from this request
-scope_in: []
+  - type: textarea
+    id: scope_in
+    attributes:
+      label: Scope (IN)
+      description: What is included in this request?
+      placeholder: "- Include A\n- Include B"
+    validations:
+      required: true
 
-scope_out: []
+  - type: textarea
+    id: scope_out
+    attributes:
+      label: Scope (OUT)
+      description: What is explicitly excluded from this request?
+      placeholder: "- Exclude X\n- Exclude Y"
+    validations:
+      required: true
 
-# Acceptance criteria (testable): Clear, measurable conditions for success
-acceptance_criteria: ""
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance Criteria (testable)
+      description: Clear, measurable conditions for success.
+      placeholder: "- Given ... when ... then ...\n- Unit tests cover ...\n- Performance: ..."
+    validations:
+      required: true
 
-# Risk level: low|medium|high
-risk_level: "low"
+  - type: dropdown
+    id: risk_level
+    attributes:
+      label: Risk Level
+      options:
+        - low
+        - medium
+        - high
+    validations:
+      required: true
 
-# Affected paths/modules: List of components or modules impacted by this change
-affected_paths: []
+  - type: textarea
+    id: affected_paths
+    attributes:
+      label: Affected Paths / Modules
+      description: List file paths or modules likely to be impacted.
+      placeholder: "- src/MyService/Controllers\n- src/MyService/Data"
+    validations:
+      required: true
 
-# Safe-to-automate checkbox: Indicate if this can be automated without human intervention
-safe_to_automate: false
+  - type: checkboxes
+    id: safe_to_automate
+    attributes:
+      label: Safe to automate
+      options:
+        - label: "Yes — this can be automated without human intervention (PR will still be gated by CI + vulnerability checks)"
+          required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        **To start automation**, add a comment:
+        `/lightspeed run`
