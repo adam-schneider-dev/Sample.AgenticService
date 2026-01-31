@@ -1,0 +1,54 @@
+name: Lightspeed Command
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+
+jobs:
+  handle_run_command:
+    # issue_comment triggers on PR comments too; ignore PRs
+    if: ${{ github.event.issue.pull_request == null }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Handle /lightspeed run
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = (context.payload.comment.body || "").trim();
+            const issue = context.payload.issue;
+
+            if (body !== "/lightspeed run") {
+              core.info("Not a /lightspeed run command; ignoring.");
+              return;
+            }
+
+            const labels = (issue.labels || []).map(l => l.name);
+            const isReady = labels.includes("lightspeed:ready");
+
+            if (!isReady) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: "Cannot start: this issue is not `lightspeed:ready`. Please complete the intake fields until the intake workflow marks it ready."
+              });
+              return;
+            }
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              labels: ["lightspeed:run-requested"]
+            });
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body: "Run requested. Worker may claim this issue shortly."
+            });
