@@ -17,3 +17,5 @@ var inputJson = """
 var jsonService = new JsonService.Service();
 var result = jsonService.TransformJson(inputJson);
 Console.WriteLine(result);
+
+string key = "AKIAFAKESECRET123";
