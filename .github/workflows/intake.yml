@@ -1,0 +1,146 @@
+name: Lightspeed Intake
+
+on:
+  issues:
+    types: [opened, edited, reopened]
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  intake:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Normalize and validate issue into request.json
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const issue_number = issue.number;
+            const body = issue.body || "";
+
+            function sectionValue(heading) {
+              // Matches "### Heading" followed by content until next "### " or end.
+              const re = new RegExp(`###\\s+${heading}\\s*\\n([\\s\\S]*?)(?=\\n###\\s+|$)`, "i");
+              const m = body.match(re);
+              return m ? m[1].trim() : "";
+            }
+
+            function parseBullets(text) {
+              // Convert "- item" lines into array; fall back to whole text if no bullets.
+              const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+              const bullets = lines
+                .filter(l => l.startsWith("- ") || l.startsWith("* "))
+                .map(l => l.replace(/^[-*]\s+/, "").trim())
+                .filter(Boolean);
+              return bullets.length ? bullets : (text ? [text] : []);
+            }
+
+            // These headings must match the Issue Form labels exactly as rendered in the body.
+            const objective = sectionValue("Objective / Outcome");
+            const scopeInRaw = sectionValue("Scope \\(IN\\)");
+            const scopeOutRaw = sectionValue("Scope \\(OUT\\)");
+            const acceptance = sectionValue("Acceptance Criteria \\(testable\\)");
+            const risk = sectionValue("Risk Level");
+            const affectedRaw = sectionValue("Affected Paths / Modules");
+            const safeToAutomateRaw = sectionValue("Safe to automate");
+
+            const missing = [];
+            if (!objective) missing.push("Objective / Outcome");
+            if (!scopeInRaw) missing.push("Scope (IN)");
+            if (!scopeOutRaw) missing.push("Scope (OUT)");
+            if (!acceptance) missing.push("Acceptance Criteria (testable)");
+            if (!risk) missing.push("Risk Level");
+            if (!affectedRaw) missing.push("Affected Paths / Modules");
+
+            // GitHub renders checkboxes as "- [x] ..." / "- [ ] ..."
+            const safeToAutomate = /- \[x\]/i.test(safeToAutomateRaw);
+
+            const request = {
+              issue_number,
+              title: issue.title,
+              url: issue.html_url,
+              objective,
+              scope_in: parseBullets(scopeInRaw),
+              scope_out: parseBullets(scopeOutRaw),
+              acceptance_criteria: parseBullets(acceptance),
+              risk_level: (risk || "").toLowerCase(),
+              affected_paths: parseBullets(affectedRaw),
+              safe_to_automate: safeToAutomate,
+              created_at: issue.created_at,
+              updated_at: issue.updated_at
+            };
+
+            const readyLabel = "lightspeed:ready";
+            const needsInfoLabel = "lightspeed:needs-info";
+            const intakeLabel = "lightspeed:intake";
+            const commentMarker = "<!-- lightspeed:request-json -->";
+
+            async function ensureLabels(addLabels, removeLabels) {
+              // Add labels
+              if (addLabels.length) {
+                await github.rest.issues.addLabels({ owner, repo, issue_number, labels: addLabels });
+              }
+              // Remove labels (ignore errors if label not present)
+              for (const name of removeLabels) {
+                try {
+                  await github.rest.issues.removeLabel({ owner, repo, issue_number, name });
+                } catch (e) {}
+              }
+            }
+
+            // Find existing marker comment (update instead of spamming)
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner, repo, issue_number, per_page: 100
+            });
+            const existing = comments.find(c => (c.body || "").includes(commentMarker));
+
+            const requestJsonBlock =
+              `${commentMarker}\n` +
+              `### Lightspeed Normalized Request (request.json)\n` +
+              "```json\n" +
+              JSON.stringify(request, null, 2) +
+              "\n```\n";
+
+            if (missing.length) {
+              const msg =
+                `Intake validation failed. Missing/empty sections:\n` +
+                missing.map(m => `- ${m}`).join("\n") +
+                `\n\nPlease edit the issue to fill these in.`;
+
+              // Comment (or update the marker comment with failure + payload)
+              const bodyToPost = requestJsonBlock + "\n" + msg;
+
+              if (existing) {
+                await github.rest.issues.updateComment({
+                  owner, repo, comment_id: existing.id, body: bodyToPost
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner, repo, issue_number, body: bodyToPost
+                });
+              }
+
+              await ensureLabels([needsInfoLabel, intakeLabel], [readyLabel]);
+              core.setFailed("Intake validation failed");
+              return;
+            }
+
+            // Valid: post/update normalized request.json
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner, repo, comment_id: existing.id, body: requestJsonBlock
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number, body: requestJsonBlock
+              });
+            }
+
+            await ensureLabels([readyLabel, intakeLabel], [needsInfoLabel]);
+            console.log("Intake normalized successfully.");
+
+
